@@ -109,7 +109,7 @@ class SyncFIFO(Module, _FIFOInterface):
         storage = Memory(self.width, depth)
         self.specials += storage
 
-        wrport = storage.get_port(write_capable=True, read_capable=False, mode=READ_FIRST)
+        wrport = storage.get_port(write_capable=True, mode=READ_FIRST, read_capable=False)
         self.specials += wrport
         self.comb += [
             If(self.replace,
@@ -235,7 +235,7 @@ class AsyncFIFO(Module, _FIFOInterface):
 
         storage = Memory(self.width, depth)
         self.specials += storage
-        wrport = storage.get_port(write_capable=True, read_capable=False, clock_domain="write")
+        wrport = storage.get_port(write_capable=True, clock_domain="write", read_capable=False)
         self.specials += wrport
         self.comb += [
             wrport.adr.eq(produce.q_binary[:-1]),
