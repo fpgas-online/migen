@@ -1,6 +1,6 @@
 ### Migen (Milkymist generator)
 
-<img src="https://github.com/m-labs/migen/raw/master/doc/migen_logo.png" alt="migen logo" width="150"/>
+<img src="https://git.m-labs.hk/M-Labs/migen/raw/branch/master/doc/migen_logo.png" alt="migen logo" width="150"/>
 
 #### A Python toolbox for building complex digital hardware
 
@@ -35,10 +35,10 @@ Migen is designed for Python 3.5. Note that Migen is **not** spelled MiGen.
 #### Quick Links
 
 Code repository:
-https://github.com/m-labs/migen
+https://git.m-labs.hk/M-Labs/migen
 
 System-on-chip design based on Migen:
-https://github.com/m-labs/misoc
+https://git.m-labs.hk/M-Labs/misoc
 
 Online documentation:
 https://m-labs.hk/migen/manual/
@@ -73,9 +73,8 @@ do them if possible:
 * send us the modifications and improvements you have done to Migen. The use
    of "git format-patch" is recommended. If your submission is large and
    complex and/or you are not sure how to proceed, feel free to discuss it on
-   the mailing list or IRC (#m-labs on Freenode) beforehand.
+   the forum or IRC (#m-labs on OFTC) beforehand.
 
-See LICENSE file for full copyright and license info. You can contact us on the
-public mailing list devel [AT] lists.m-labs.hk.
+See LICENSE file for full copyright and license info.
 
   "Electricity! It's like magic!"

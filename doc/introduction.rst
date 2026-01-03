@@ -58,7 +58,7 @@ Installing Migen
 Either run ``python3 -m pip install .`` or simply set ``PYTHONPATH`` to the root of the source directory.
 
 If you wish to contribute patches, the suggested way to install is;
-   #. Clone from the git repository at https://github.com/m-labs/migen
+   #. Clone from the git repository at https://git.m-labs.hk/M-Labs/migen
    #. Install using the ``-e`` pip option, or set ``PYTHONPATH`` to the root of the checked-out directory.
    #. Edit the code in your git checkout.
 
@@ -66,8 +66,8 @@ Alternative install methods
 ===========================
 
  * Migen is available for the Anaconda Python distribution. The package can be found at at https://anaconda.org/m-labs/migen
- * Migen can be referenced in a requirements.txt file (used for ``pip install -r requirements.txt``) via ``-e git+https://github.com/m-labs/migen.git#egg=migen``. See the pip documentation for more information.
+ * Migen can be referenced in a requirements.txt file (used for ``pip install -r requirements.txt``) via ``-e git+https://git.m-labs.hk/M-Labs/migen.git#egg=migen``. See the pip documentation for more information.
 
 Feedback
 ********
-Feedback concerning Migen or this manual should be sent to the M-Labs forum at https://forum.m-labs.hk or in GitHub issues.
+Feedback concerning Migen or this manual should be sent to the M-Labs forum at https://forum.m-labs.hk or in Gitea issues.

@@ -111,20 +111,9 @@ html_theme = 'sphinx_rtd_theme'
 # further.  For a list of options available for each theme, see the
 # documentation.
 
-# Enable github links when not on readthedocs
-on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-if not on_rtd:
-    html_context = {
-        "display_github": True, # Integrate GitHub
-        "github_user": "m-labs", # Username
-        "github_repo": "migen", # Repo name
-        "github_version": "master", # Version
-        "conf_py_path": "/doc/",
-    }
-else:
-    html_theme_options = {
-        "canonical_url": "https://m-labs.hk/migen/manual/",
-    }
+html_theme_options = {
+    "canonical_url": "https://m-labs.hk/migen/manual/",
+}
 
 
 # Add any paths that contain custom themes here, relative to this directory.
@@ -312,8 +301,8 @@ def linkcode_resolve(domain, info):
     fn = relpath(fn, start=dirname(migen.__file__))
 
     if 'dev' in migen_version:
-        return "http://github.com/m-labs/migen/blob/master/migen/%s%s" % (
+        return "https://git.m-labs.hk/M-Labs/migen/src/branch/master/migen/%s%s" % (
            fn, linespec)
     else:
-        return "http://github.com/m-labs/migen/blob/%s/migen/%s%s" % (
+        return "https://git.m-labs.hk/M-Labs/migen/src/tag/%s/migen/%s%s" % (
            migen_version, fn, linespec)
