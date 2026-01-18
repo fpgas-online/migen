@@ -95,13 +95,28 @@ class Evaluator:
         self.signal_values = dict()
         self.modifications = dict()
 
-    def commit(self):
+    def commit_changed(self):
+        changed = False
+        sv = self.signal_values
+        mods = self.modifications
+        for k, v in mods.items():
+            old = sv.get(k, None)
+            if old != v:
+                sv[k] = v
+                changed = True
+        mods.clear()
+        return changed
+
+    def commit_set(self):
         r = set()
-        for k, v in self.modifications.items():
-            if k not in self.signal_values or self.signal_values[k] != v:
-                self.signal_values[k] = v
+        sv = self.signal_values
+        mods = self.modifications
+        for k, v in mods.items():
+            old = sv.get(k, None)
+            if old != v:
+                sv[k] = v
                 r.add(k)
-        self.modifications.clear()
+        mods.clear()
         return r
 
     def _eval(self, node, postcommit=False):
@@ -435,12 +450,19 @@ class Simulator:
 
     def _commit_and_comb_propagate(self):
         # TODO: optimize
+        if isinstance(self.vcd, DummyVCDWriter):
+            # no-trace fast path
+            modified = self.evaluator.commit_changed()
+            while modified:
+                self.evaluator.execute(self.fragment.comb)
+                modified = self.evaluator.commit_changed()
+            return
         all_modified = set()
-        modified = self.evaluator.commit()
+        modified = self.evaluator.commit_set()
         all_modified |= modified
         while modified:
             self.evaluator.execute(self.fragment.comb)
-            modified = self.evaluator.commit()
+            modified = self.evaluator.commit_set()
             all_modified |= modified
         for signal in all_modified:
             self.vcd.set(signal, self.evaluator.signal_values[signal])
