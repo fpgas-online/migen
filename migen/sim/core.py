@@ -130,13 +130,12 @@ class Evaluator:
                 return str2op[node.op](*operands)
         elif isinstance(node, _Slice):
             v = self.eval(node.value, postcommit)
-            idx = range(node.start, node.stop)
-            return sum(((v >> i) & 1) << j for j, i in enumerate(idx))
+            w = node.stop - node.start
+            return (v >> node.start) & ((1 << w) - 1)
         elif isinstance(node, _Part):
             v = self.eval(node.value, postcommit)
             offset = self.eval(node.offset, postcommit)
-            idx = range(offset, offset + node.width)
-            return sum(((v >> i) & 1) << j for j, i in enumerate(idx))
+            return (v >> offset) & ((1 << node.width) - 1)
         elif isinstance(node, Cat):
             shift = 0
             r = 0
@@ -198,13 +197,12 @@ class Evaluator:
                 return str2op[node.op](*operands)
         elif t is _Slice:
             v = self.eval(node.value, postcommit)
-            idx = range(node.start, node.stop)
-            return sum(((v >> i) & 1) << j for j, i in enumerate(idx))
+            w = node.stop - node.start
+            return (v >> node.start) & ((1 << w) - 1)
         elif t is _Part:
             v = self.eval(node.value, postcommit)
             offset = self.eval(node.offset, postcommit)
-            idx = range(offset, offset + node.width)
-            return sum(((v >> i) & 1) << j for j, i in enumerate(idx))
+            return (v >> offset) & ((1 << node.width) - 1)
         elif t is Cat:
             shift = 0
             r = 0
