@@ -13,6 +13,10 @@ class DUID:
     def __init__(self):
         self.duid = DUID.__next_uid
         DUID.__next_uid += 1
+    
+    @staticmethod
+    def get_max_duid():
+        return DUID.__next_uid
 
 
 class _Value(DUID):

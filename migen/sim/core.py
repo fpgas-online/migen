@@ -92,17 +92,17 @@ class Evaluator:
     def __init__(self, clock_domains, replaced_memories):
         self.clock_domains = clock_domains
         self.replaced_memories = replaced_memories
-        self.signal_values = dict()
-        self.modifications = dict()
+        self.signal_values = [None] * DUID.get_max_duid() # index by duid
+        self.modifications = dict() # duid -> int
 
     def commit_changed(self):
         changed = False
         sv = self.signal_values
         mods = self.modifications
-        for k, v in mods.items():
-            old = sv.get(k, None)
+        for duid, v in mods.items():
+            old = sv[duid]
             if old != v:
-                sv[k] = v
+                sv[duid] = v
                 changed = True
         mods.clear()
         return changed
@@ -111,11 +111,11 @@ class Evaluator:
         r = set()
         sv = self.signal_values
         mods = self.modifications
-        for k, v in mods.items():
-            old = sv.get(k, None)
+        for duid, v in mods.items():
+            old = sv[duid]
             if old != v:
-                sv[k] = v
-                r.add(k)
+                sv[duid] = v
+                r.add(duid)
         mods.clear()
         return r
 
@@ -123,15 +123,13 @@ class Evaluator:
         if isinstance(node, Constant):
             return node.value
         elif isinstance(node, Signal):
+            duid = node.duid
             if postcommit:
-                try:
-                    return self.modifications[node]
-                except KeyError:
-                    pass
-            try:
-                return self.signal_values[node]
-            except KeyError:
-                return node.reset.value
+                v = self.modifications.get(duid)
+                if v is not None:
+                    return v
+            v = self.signal_values[duid]
+            return node.reset.value if v is None else v
         elif isinstance(node, _Operator):
             operands = [self.eval(o, postcommit) for o in node.operands]
             if node.op == "-":
@@ -190,15 +188,13 @@ class Evaluator:
         if t is Constant:
             return node.value
         elif t is Signal:
+            duid = node.duid
             if postcommit:
-                try:
-                    return self.modifications[node]
-                except KeyError:
-                    pass
-            try:
-                return self.signal_values[node]
-            except KeyError:
-                return node.reset.value
+                v = self.modifications.get(duid)
+                if v is not None:
+                    return v
+            v = self.signal_values[duid]
+            return node.reset.value if v is None else v
         elif t is _Operator:
             operands = [self.eval(o, postcommit) for o in node.operands]
             if node.op == "-":
@@ -258,8 +254,8 @@ class Evaluator:
     def _assign(self, node, value):
         if isinstance(node, Signal):
             assert not node.variable
-            self.modifications[node] = _truncate(value,
-                                                 node.nbits, node.signed)
+            self.modifications[node.duid] = _truncate(value,
+                                                      node.nbits, node.signed)
         elif isinstance(node, Cat):
             for element in node.l:
                 nbits = len(element)
@@ -295,8 +291,8 @@ class Evaluator:
         t = type(node)
         if t is Signal:
             assert not node.variable
-            self.modifications[node] = _truncate(value,
-                                                 node.nbits, node.signed)
+            self.modifications[node.duid] = _truncate(value,
+                                                      node.nbits, node.signed)
         elif t is Cat:
             for element in node.l:
                 nbits = len(element)
@@ -357,10 +353,8 @@ class Evaluator:
                 args = []
                 for arg in s.args:
                     assert isinstance(arg, _Value)
-                    try:
-                        args.append(self.signal_values[arg])
-                    except: # not yet evaluated
-                        args.append(arg.reset.value)
+                    v = self.signal_values[arg.duid]
+                    args.append(arg.reset.value if v is None else v)
                 print(s.s %(*args,))
             # slow path for subclasses of _Assign, If, Case
             elif isinstance(s, _Assign):
@@ -448,6 +442,7 @@ class Simulator:
 
         if vcd_name is None:
             self.vcd = DummyVCDWriter()
+            self._duid2sig = None
         else:
             self.vcd = VCDWriter(vcd_name, module_name=type(fragment_or_module).__name__)
 
@@ -458,9 +453,11 @@ class Simulator:
                     signals.add(cd.rst)
             for memory_array in mta.replacements.values():
                 signals |= set(memory_array)
+            duid2sig = [None] * DUID.get_max_duid()
             for signal in sorted(signals, key=lambda x: x.duid):
                 self.vcd.set(signal, signal.reset.value)
-
+                duid2sig[signal.duid] = signal
+            self._duid2sig = duid2sig
     def __enter__(self):
         return self
 
@@ -479,15 +476,16 @@ class Simulator:
                 self.evaluator.execute(self.fragment.comb)
                 modified = self.evaluator.commit_changed()
             return
-        all_modified = set()
+        all_modified = set() # duid
         modified = self.evaluator.commit_set()
         all_modified |= modified
         while modified:
             self.evaluator.execute(self.fragment.comb)
             modified = self.evaluator.commit_set()
             all_modified |= modified
-        for signal in all_modified:
-            self.vcd.set(signal, self.evaluator.signal_values[signal])
+        for duid in all_modified:
+            signal = self._duid2sig[duid]
+            self.vcd.set(signal, self.evaluator.signal_values[duid])
 
     def _evalexec_nested_lists(self, x):
         if isinstance(x, list):
@@ -495,6 +493,12 @@ class Simulator:
         elif isinstance(x, _Value):
             return self.evaluator.eval(x)
         elif isinstance(x, _Statement):
+            # need to update signal list if vcd is on because
+            # generators might create new signals
+            if self._duid2sig is not None:
+                for s in list_signals(x):
+                    if self._duid2sig[s.duid] is None:
+                        self._duid2sig[s.duid] = s
             self.evaluator.execute([x])
             return None
         else:
