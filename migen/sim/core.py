@@ -82,9 +82,9 @@ str2op = {
 
 
 def _truncate(value, nbits, signed):
-    value = value & (2**nbits - 1)
-    if signed and (value & 2**(nbits - 1)):
-        value -= 2**nbits
+    value = value & ((1<<nbits) - 1)
+    if signed and (value & (1 << (nbits - 1))):
+        value -= (1 << nbits)
     return value
 
 
@@ -157,12 +157,12 @@ class Evaluator:
             for element in node.l:
                 nbits = len(element)
                 # make value always positive
-                r |= (self.eval(element, postcommit) & (2**nbits-1)) << shift
+                r |= (self.eval(element, postcommit) & ((1<<nbits)-1)) << shift
                 shift += nbits
             return r
         elif isinstance(node, Replicate):
             nbits = len(node.v)
-            v = self.eval(node.v, postcommit) & (2**nbits - 1)
+            v = self.eval(node.v, postcommit) & ((1<<nbits) - 1)
             return sum(v << i*nbits for i in range(node.n))
         elif isinstance(node, _ArrayProxy):
             idx = min(len(node.choices) - 1, self.eval(node.key, postcommit))
@@ -224,12 +224,12 @@ class Evaluator:
             for element in node.l:
                 nbits = len(element)
                 # make value always positive
-                r |= (self.eval(element, postcommit) & (2**nbits-1)) << shift
+                r |= (self.eval(element, postcommit) & ((1<<nbits)-1)) << shift
                 shift += nbits
             return r
         elif t is Replicate:
             nbits = len(node.v)
-            v = self.eval(node.v, postcommit) & (2**nbits - 1)
+            v = self.eval(node.v, postcommit) & ((1<<nbits) - 1)
             return sum(v << i*nbits for i in range(node.n))
         elif t is _ArrayProxy:
             idx = min(len(node.choices) - 1, self.eval(node.key, postcommit))
@@ -263,7 +263,7 @@ class Evaluator:
         elif isinstance(node, Cat):
             for element in node.l:
                 nbits = len(element)
-                self.assign(element, value & (2**nbits-1))
+                self.assign(element, value & ((1<<nbits)-1))
                 value >>= nbits
         elif isinstance(node, _Slice):
             full_value = self.eval(node.value, True)
@@ -300,7 +300,7 @@ class Evaluator:
         elif t is Cat:
             for element in node.l:
                 nbits = len(element)
-                self.assign(element, value & (2**nbits-1))
+                self.assign(element, value & ((1<<nbits)-1))
                 value >>= nbits
         elif t is _Slice:
             full_value = self.eval(node.value, True)
@@ -332,10 +332,41 @@ class Evaluator:
 
     def execute(self, statements):
         for s in statements:
-            if isinstance(s, _Assign):
+            t = type(s)
+            if t is _Assign:
+                self.assign(s.l, self.eval(s.r))
+            elif t is If:
+                if self.eval(s.cond) & ((1 << len(s.cond)) - 1):
+                    self.execute(s.t)
+                else:
+                    self.execute(s.f)
+            elif t is Case:
+                nbits, signed = value_bits_sign(s.test)
+                test = _truncate(self.eval(s.test), nbits, signed)
+                found = False
+                for k, v in s.cases.items():
+                    if isinstance(k, Constant) and k.value == test:
+                        self.execute(v)
+                        found = True
+                        break
+                if not found and "default" in s.cases:
+                    self.execute(s.cases["default"])
+            elif t is tuple:
+                self.execute(s)
+            elif isinstance(s, Display):
+                args = []
+                for arg in s.args:
+                    assert isinstance(arg, _Value)
+                    try:
+                        args.append(self.signal_values[arg])
+                    except: # not yet evaluated
+                        args.append(arg.reset.value)
+                print(s.s %(*args,))
+            # slow path for subclasses of _Assign, If, Case
+            elif isinstance(s, _Assign):
                 self.assign(s.l, self.eval(s.r))
             elif isinstance(s, If):
-                if self.eval(s.cond) & (2**len(s.cond) - 1):
+                if self.eval(s.cond) & ((1 << len(s.cond)) - 1):
                     self.execute(s.t)
                 else:
                     self.execute(s.f)
@@ -352,15 +383,6 @@ class Evaluator:
                     self.execute(s.cases["default"])
             elif isinstance(s, collections.abc.Iterable):
                 self.execute(s)
-            elif isinstance(s, Display):
-                args = []
-                for arg in s.args:
-                    assert isinstance(arg, _Value)
-                    try:
-                        args.append(self.signal_values[arg])
-                    except: # not yet evaluated
-                        args.append(arg.reset.value)
-                print(s.s %(*args,))
             else:
                 raise NotImplementedError
 
