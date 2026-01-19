@@ -291,8 +291,13 @@ class Evaluator:
         t = type(node)
         if t is Signal:
             assert not node.variable
-            self.modifications[node.duid] = _truncate(value,
-                                                      node.nbits, node.signed)
+            # hot path: _truncate inlined:
+            duid = node.duid
+            full = 1 << node.nbits
+            v = value & (full - 1)
+            if node.signed and (v & (full >> 1)):
+                v -= full
+            self.modifications[duid] = v
         elif t is Cat:
             for element in node.l:
                 nbits = len(element)
@@ -301,9 +306,9 @@ class Evaluator:
         elif t is _Slice:
             full_value = self.eval(node.value, True)
             # clear bits assigned to by the slice
-            full_value &= ~((2**node.stop-1) - (2**node.start-1))
+            full_value &= ~(((1 << (node.stop - node.start)) - 1) << node.start)
             # set them to the new value
-            value &= 2**(node.stop - node.start)-1
+            value &= (1 << (node.stop - node.start)) - 1
             full_value |= value << node.start
             self.assign(node.value, full_value)
         elif t is _Part:
