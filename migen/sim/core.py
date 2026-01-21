@@ -119,216 +119,139 @@ class Evaluator:
         mods.clear()
         return r
 
-    def _eval(self, node, postcommit=False):
-        if isinstance(node, Constant):
-            return node.value
-        elif isinstance(node, Signal):
-            duid = node.duid
-            if postcommit:
-                v = self.modifications.get(duid)
-                if v is not None:
-                    return v
-            v = self.signal_values[duid]
-            return node.reset.value if v is None else v
-        elif isinstance(node, _Operator):
-            operands = [self.eval(o, postcommit) for o in node.operands]
-            if node.op == "-":
-                if len(operands) == 1:
-                    return -operands[0]
-                else:
-                    return operands[0] - operands[1]
-            elif node.op == "m":
-                return operands[1] if operands[0] else operands[2]
-            else:
-                return str2op[node.op](*operands)
-        elif isinstance(node, _Slice):
-            v = self.eval(node.value, postcommit)
-            w = node.stop - node.start
-            return (v >> node.start) & ((1 << w) - 1)
-        elif isinstance(node, _Part):
-            v = self.eval(node.value, postcommit)
-            offset = self.eval(node.offset, postcommit)
-            return (v >> offset) & ((1 << node.width) - 1)
-        elif isinstance(node, Cat):
-            shift = 0
-            r = 0
-            for element in node.l:
-                nbits = len(element)
-                # make value always positive
-                r |= (self.eval(element, postcommit) & ((1<<nbits)-1)) << shift
-                shift += nbits
-            return r
-        elif isinstance(node, Replicate):
-            nbits = len(node.v)
-            v = self.eval(node.v, postcommit) & ((1<<nbits) - 1)
-            return sum(v << i*nbits for i in range(node.n))
-        elif isinstance(node, _ArrayProxy):
-            idx = min(len(node.choices) - 1, self.eval(node.key, postcommit))
-            return self.eval(node.choices[idx], postcommit)
-        elif isinstance(node, _MemoryLocation):
-            array = self.replaced_memories[node.memory]
-            return self.eval(array[self.eval(node.index, postcommit)], postcommit)
-        elif isinstance(node, ClockSignal):
-            return self.eval(self.clock_domains[node.cd].clk, postcommit)
-        elif isinstance(node, ResetSignal):
-            rst = self.clock_domains[node.cd].rst
-            if rst is None:
-                if node.allow_reset_less:
-                    return 0
-                else:
-                    raise ValueError("Attempted to get reset signal of resetless"
-                                     " domain '{}'".format(node.cd))
-            else:
-                return self.eval(rst, postcommit)
-        else:
-            raise NotImplementedError(node)
-
     def eval(self, node, postcommit=False):
         t = type(node)
-        if t is Constant:
-            return node.value
-        elif t is Signal:
-            duid = node.duid
-            if postcommit:
-                v = self.modifications.get(duid)
-                if v is not None:
-                    return v
-            v = self.signal_values[duid]
-            return node.reset.value if v is None else v
-        elif t is _Operator:
-            operands = [self.eval(o, postcommit) for o in node.operands]
-            if node.op == "-":
-                if len(operands) == 1:
-                    return -operands[0]
+        while True:
+            if t is Constant:
+                return node.value
+            elif t is Signal:
+                duid = node.duid
+                if postcommit:
+                    v = self.modifications.get(duid)
+                    if v is not None:
+                        return v
+                v = self.signal_values[duid]
+                return node.reset.value if v is None else v
+            elif t is _Operator:
+                operands = [self.eval(o, postcommit) for o in node.operands]
+                if node.op == "-":
+                    if len(operands) == 1:
+                        return -operands[0]
+                    else:
+                        return operands[0] - operands[1]
+                elif node.op == "m":
+                    return operands[1] if operands[0] else operands[2]
                 else:
-                    return operands[0] - operands[1]
-            elif node.op == "m":
-                return operands[1] if operands[0] else operands[2]
-            else:
-                return str2op[node.op](*operands)
-        elif t is _Slice:
-            v = self.eval(node.value, postcommit)
-            w = node.stop - node.start
-            return (v >> node.start) & ((1 << w) - 1)
-        elif t is _Part:
-            v = self.eval(node.value, postcommit)
-            offset = self.eval(node.offset, postcommit)
-            return (v >> offset) & ((1 << node.width) - 1)
-        elif t is Cat:
-            shift = 0
-            r = 0
-            for element in node.l:
-                nbits = len(element)
-                # make value always positive
-                r |= (self.eval(element, postcommit) & ((1<<nbits)-1)) << shift
-                shift += nbits
-            return r
-        elif t is Replicate:
-            nbits = len(node.v)
-            v = self.eval(node.v, postcommit) & ((1<<nbits) - 1)
-            return sum(v << i*nbits for i in range(node.n))
-        elif t is _ArrayProxy:
-            idx = min(len(node.choices) - 1, self.eval(node.key, postcommit))
-            return self.eval(node.choices[idx], postcommit)
-        elif t is _MemoryLocation:
-            array = self.replaced_memories[node.memory]
-            return self.eval(array[self.eval(node.index, postcommit)], postcommit)
-        elif t is ClockSignal:
-            return self.eval(self.clock_domains[node.cd].clk, postcommit)
-        elif t is ResetSignal:
-            rst = self.clock_domains[node.cd].rst
-            if rst is None:
-                if node.allow_reset_less:
-                    return 0
+                    return str2op[node.op](*operands)
+            elif t is _Slice:
+                v = self.eval(node.value, postcommit)
+                w = node.stop - node.start
+                return (v >> node.start) & ((1 << w) - 1)
+            elif t is _Part:
+                v = self.eval(node.value, postcommit)
+                offset = self.eval(node.offset, postcommit)
+                return (v >> offset) & ((1 << node.width) - 1)
+            elif t is Cat:
+                shift = 0
+                r = 0
+                for element in node.l:
+                    nbits = len(element)
+                    # make value always positive
+                    r |= (self.eval(element, postcommit) & ((1<<nbits)-1)) << shift
+                    shift += nbits
+                return r
+            elif t is Replicate:
+                nbits = len(node.v)
+                v = self.eval(node.v, postcommit) & ((1<<nbits) - 1)
+                return sum(v << i*nbits for i in range(node.n))
+            elif t is _ArrayProxy:
+                idx = min(len(node.choices) - 1, self.eval(node.key, postcommit))
+                return self.eval(node.choices[idx], postcommit)
+            elif t is _MemoryLocation:
+                array = self.replaced_memories[node.memory]
+                return self.eval(array[self.eval(node.index, postcommit)], postcommit)
+            elif t is ClockSignal:
+                return self.eval(self.clock_domains[node.cd].clk, postcommit)
+            elif t is ResetSignal:
+                rst = self.clock_domains[node.cd].rst
+                if rst is None:
+                    if node.allow_reset_less:
+                        return 0
+                    else:
+                        raise ValueError("Attempted to get reset signal of resetless"
+                                        " domain '{}'".format(node.cd))
                 else:
-                    raise ValueError("Attempted to get reset signal of resetless"
-                                     " domain '{}'".format(node.cd))
+                    return self.eval(rst, postcommit)
             else:
-                return self.eval(rst, postcommit)
-        else:
-            # fast path failed
-            return self._eval(node, postcommit)
-       
+                if isinstance(node, Constant): t = Constant
+                elif isinstance(node, Signal): t = Signal
+                elif isinstance(node, _Operator): t = _Operator
+                elif isinstance(node, _Slice): t = _Slice
+                elif isinstance(node, _Part): t = _Part
+                elif isinstance(node, Cat): t = Cat
+                elif isinstance(node, Replicate): t = Replicate
+                elif isinstance(node, _ArrayProxy): t = _ArrayProxy
+                elif isinstance(node, _MemoryLocation): t = _MemoryLocation
+                elif isinstance(node, ClockSignal): t = ClockSignal
+                elif isinstance(node, ResetSignal): t = ResetSignal
+                else:
+                    raise NotImplementedError(node)
 
-
-    def _assign(self, node, value):
-        if isinstance(node, Signal):
-            assert not node.variable
-            self.modifications[node.duid] = _truncate(value,
-                                                      node.nbits, node.signed)
-        elif isinstance(node, Cat):
-            for element in node.l:
-                nbits = len(element)
-                self.assign(element, value & ((1<<nbits)-1))
-                value >>= nbits
-        elif isinstance(node, _Slice):
-            full_value = self.eval(node.value, True)
-            # clear bits assigned to by the slice
-            full_value &= ~((2**node.stop-1) - (2**node.start-1))
-            # set them to the new value
-            value &= 2**(node.stop - node.start)-1
-            full_value |= value << node.start
-            self.assign(node.value, full_value)
-        elif isinstance(node, _Part):
-            full_value = self.eval(node.value, True)
-            offset = self.eval(node.offset, True)
-            start = offset
-            stop = offset + node.width
-            full_value &= ~((2**stop-1) - (2**start-1))
-            value &= 2**(stop - start)-1
-            full_value |= value << start
-            self.assign(node.value, full_value)
-        elif isinstance(node, _ArrayProxy):
-            idx = min(len(node.choices) - 1, self.eval(node.key))
-            self.assign(node.choices[idx], value)
-        elif isinstance(node, _MemoryLocation):
-            array = self.replaced_memories[node.memory]
-            self.assign(array[self.eval(node.index)], value)
-        else:
-            raise NotImplementedError(node)
-    
     def assign(self, node, value):
         t = type(node)
-        if t is Signal:
-            assert not node.variable
-            # hot path: _truncate inlined:
-            duid = node.duid
-            full = 1 << node.nbits
-            v = value & (full - 1)
-            if node.signed and (v & (full >> 1)):
-                v -= full
-            self.modifications[duid] = v
-        elif t is Cat:
-            for element in node.l:
-                nbits = len(element)
-                self.assign(element, value & ((1<<nbits)-1))
-                value >>= nbits
-        elif t is _Slice:
-            full_value = self.eval(node.value, True)
-            # clear bits assigned to by the slice
-            full_value &= ~(((1 << (node.stop - node.start)) - 1) << node.start)
-            # set them to the new value
-            value &= (1 << (node.stop - node.start)) - 1
-            full_value |= value << node.start
-            self.assign(node.value, full_value)
-        elif t is _Part:
-            full_value = self.eval(node.value, True)
-            offset = self.eval(node.offset, True)
-            start = offset
-            stop = offset + node.width
-            full_value &= ~((2**stop-1) - (2**start-1))
-            value &= 2**(stop - start)-1
-            full_value |= value << start
-            self.assign(node.value, full_value)
-        elif t is _ArrayProxy:
-            idx = min(len(node.choices) - 1, self.eval(node.key))
-            self.assign(node.choices[idx], value)
-        elif t is _MemoryLocation:
-            array = self.replaced_memories[node.memory]
-            self.assign(array[self.eval(node.index)], value)
-        else:
-            # fast path failed
-            self._assign(node, value)
+        while True:
+            if t is Signal:
+                assert not node.variable
+                # hot path: _truncate inlined:
+                duid = node.duid
+                full = 1 << node.nbits
+                v = value & (full - 1)
+                if node.signed and (v & (full >> 1)):
+                    v -= full
+                self.modifications[duid] = v
+                return
+            elif t is Cat:
+                for element in node.l:
+                    nbits = len(element)
+                    self.assign(element, value & ((1<<nbits)-1))
+                    value >>= nbits
+                return
+            elif t is _Slice:
+                full_value = self.eval(node.value, True)
+                # clear bits assigned to by the slice
+                full_value &= ~(((1 << (node.stop - node.start)) - 1) << node.start)
+                # set them to the new value
+                value &= (1 << (node.stop - node.start)) - 1
+                full_value |= value << node.start
+                self.assign(node.value, full_value)
+                return
+            elif t is _Part:
+                full_value = self.eval(node.value, True)
+                offset = self.eval(node.offset, True)
+                start = offset
+                stop = offset + node.width
+                full_value &= ~((2**stop-1) - (2**start-1))
+                value &= 2**(stop - start)-1
+                full_value |= value << start
+                self.assign(node.value, full_value)
+                return
+            elif t is _ArrayProxy:
+                idx = min(len(node.choices) - 1, self.eval(node.key))
+                self.assign(node.choices[idx], value)
+                return
+            elif t is _MemoryLocation:
+                array = self.replaced_memories[node.memory]
+                self.assign(array[self.eval(node.index)], value)
+                return
+            else: # slow path for subclasses:
+                if isinstance(node, Signal): t = Signal
+                elif isinstance(node, Cat): t = Cat
+                elif isinstance(node, _Slice): t = _Slice
+                elif isinstance(node, _Part): t = _Part
+                elif isinstance(node, _ArrayProxy): t = _ArrayProxy
+                elif isinstance(node, _MemoryLocation): t = _MemoryLocation
+                else:
+                    raise NotImplementedError(node)
 
 
     def execute(self, statements):
