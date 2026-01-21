@@ -412,7 +412,7 @@ class Simulator:
 
     def _commit_and_comb_propagate(self):
         # TODO: optimize
-        if isinstance(self.vcd, DummyVCDWriter):
+        if type(self.vcd) is DummyVCDWriter:
             # no-trace fast path
             modified = self.evaluator.commit_changed()
             while modified:
