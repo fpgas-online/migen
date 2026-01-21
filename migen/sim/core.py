@@ -133,16 +133,31 @@ class Evaluator:
                 v = self.signal_values[duid]
                 return node.reset.value if v is None else v
             elif t is _Operator:
-                operands = [self.eval(o, postcommit) for o in node.operands]
-                if node.op == "-":
-                    if len(operands) == 1:
-                        return -operands[0]
-                    else:
-                        return operands[0] - operands[1]
-                elif node.op == "m":
-                    return operands[1] if operands[0] else operands[2]
-                else:
-                    return str2op[node.op](*operands)
+                op = node.op
+                ops = node.operands
+                a = self.eval(ops[0], postcommit)
+                # all ops with one param:
+                if op == "~": return ~a
+                if op == "-" and len(ops) == 1: return -a
+                if op == "m":
+                    return self.eval(ops[1], postcommit) if a else self.eval(ops[2], postcommit)
+                # all ops with two params:
+                b = self.eval(ops[1], postcommit)
+                if op == "+":    return a + b
+                if op == "-":    return a - b
+                if op == "*":    return a * b
+                if op == ">>>":  return a >> b
+                if op == "<<<":  return a << b
+                if op == "&":    return a & b
+                if op == "^":    return a ^ b
+                if op == "|":    return a | b
+                if op == "<":    return a < b
+                if op == "<=":   return a <= b
+                if op == "==":   return a == b
+                if op == "!=":   return a != b
+                if op == ">":    return a > b
+                if op == ">=":   return a >= b
+                raise NotImplementedError(op)
             elif t is _Slice:
                 v = self.eval(node.value, postcommit)
                 w = node.stop - node.start
