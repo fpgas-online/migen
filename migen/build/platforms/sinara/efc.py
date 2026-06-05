@@ -67,8 +67,12 @@ _ios = [
         IOStandard("LVCMOS25")
     ),
 
-    # FIXME: gtp3_sel IOStandard should depend on selected VADJ
+    # FIXME: gtpX_sel IOStandard should depend on selected VADJ
+    ("gtp2_sel", 0, Pins("T3"), IOStandard("LVCMOS25")),
     ("gtp3_sel", 0, Pins("F4"), IOStandard("LVCMOS25")),
+
+    # FIXME: button IOStandard should depend on selected VADJ
+    ("button", 0, Pins("U13"), IOStandard("LVCMOS25")),
 
     ("ddram", 0,
         Subsignal("a", Pins(
@@ -384,7 +388,7 @@ class Platform(XilinxPlatform):
     def __init__(self, hw_rev="v1.1"):
         if hw_rev == "v1.0":
             fpga = "xc7a100t-fgg484-3"
-        elif hw_rev == "v1.1":
+        elif hw_rev in ["v1.1", "v1.2"]:
             fpga = "xc7a200t-fbg484-3"
         else:
             raise ValueError("Unknown hardware revision", hw_rev)
