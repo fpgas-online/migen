@@ -29,6 +29,7 @@ _load_build_opcodes = {
     "LOAD_NAME" : _bytecode_length_version_guard(3),
     "LOAD_ATTR" : _bytecode_length_version_guard(3),
     "LOAD_FAST" : _bytecode_length_version_guard(3),
+    "LOAD_FAST_BORROW" : 2, # New in version 3.14
     "LOAD_DEREF" : _bytecode_length_version_guard(3),
     "DUP_TOP" : _bytecode_length_version_guard(1),
     "BUILD_LIST" : _bytecode_length_version_guard(3),
