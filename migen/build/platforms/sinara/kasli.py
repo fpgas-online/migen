@@ -620,7 +620,7 @@ class Platform(XilinxPlatform):
             io_rev = _io_v2_0
             connectors_rev = _connectors_eem2
             fpga = "xc7a100t-fgg484-3"
-        elif hw_rev == "v2.1":
+        elif hw_rev in ("v2.1rc1", "v2.1"):
             io_rev = _io_v2_1
             connectors_rev = _connectors_eem2
             fpga = "xc7a100t-fgg484-3"
@@ -645,5 +645,5 @@ class Platform(XilinxPlatform):
             "set_property CFGBVS VCCO [current_design]",
             "set_property CONFIG_VOLTAGE 2.5 [current_design]",
             ])
-        if hw_rev in ("v2.0", "v2.1"):
+        if hw_rev in ("v2.0", "v2.1rc1", "v2.1"):
             self.toolchain.explore_opt_design = True
