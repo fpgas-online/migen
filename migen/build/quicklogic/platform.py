@@ -5,8 +5,6 @@ from migen.build.generic_platform import GenericPlatform
 from migen.build.quicklogic import quicklogic
 
 class QuicklogicPlatform(GenericPlatform):
-    bitstream_ext = ".bit"
-
     def __init__(self, *args, toolchain="quicklogic", **kwargs):
         GenericPlatform.__init__(self, *args, **kwargs)
         self.edifs = set()

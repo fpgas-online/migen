@@ -3,7 +3,6 @@ from migen.build.altera import common, quartus
 
 
 class AlteraPlatform(GenericPlatform):
-    bitstream_ext = ".sof"
     create_rbf = True
 
     def __init__(self, *args, toolchain="quartus", **kwargs):

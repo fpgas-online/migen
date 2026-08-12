@@ -6,8 +6,6 @@ from migen.build.xilinx import common, vivado, ise, symbiflow
 
 
 class XilinxPlatform(GenericPlatform):
-    bitstream_ext = ".bit"
-
     def __init__(self, *args, toolchain="ise", **kwargs):
         GenericPlatform.__init__(self, *args, **kwargs)
         self.edifs = set()

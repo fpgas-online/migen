@@ -3,8 +3,6 @@ from migen.build.lattice import common, diamond, icestorm, trellis
 
 
 class LatticePlatform(GenericPlatform):
-    bitstream_ext = ".bit"
-
     def __init__(self, *args, toolchain="diamond", **kwargs):
         GenericPlatform.__init__(self, *args, **kwargs)
         if toolchain == "diamond":
@@ -12,7 +10,6 @@ class LatticePlatform(GenericPlatform):
         elif toolchain == "trellis":
             self.toolchain = trellis.LatticeTrellisToolchain()
         elif toolchain == "icestorm":
-            self.bitstream_ext = ".bin"
             self.toolchain = icestorm.LatticeIceStormToolchain()
         else:
             raise ValueError("Unknown toolchain")
