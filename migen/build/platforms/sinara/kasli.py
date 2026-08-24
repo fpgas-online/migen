@@ -607,7 +607,7 @@ class Platform(XilinxPlatform):
     default_clk_period = 20.0
     userid = 0xffffffff
 
-    def __init__(self, hw_rev="v1.0"):
+    def __init__(self, hw_rev="v1.0", gateware_bin_file=False):
         if hw_rev == "v1.0":
             io_rev = _io_v1_0
             connectors_rev = _connectors_bp_adapter
@@ -630,7 +630,7 @@ class Platform(XilinxPlatform):
 
         XilinxPlatform.__init__(
                 self, fpga, _io_common + io_rev, _connectors_eem + connectors_rev,
-                toolchain="vivado")
+                toolchain="vivado", gateware_bin_file=gateware_bin_file)
         self.add_platform_command(
                 "set_property INTERNAL_VREF 0.750 [get_iobanks 35]")
         self.toolchain.bitstream_commands.extend([

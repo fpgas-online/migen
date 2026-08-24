@@ -81,7 +81,7 @@ class XilinxVivadoToolchain:
         "no_shreg_extract": None
     }
 
-    def __init__(self):
+    def __init__(self, gateware_bin_file=False):
         self.bitstream_commands = []
         self.additional_commands = []
         self.pre_synthesis_commands = []
@@ -90,6 +90,7 @@ class XilinxVivadoToolchain:
         self.with_phys_opt = False
         self.clocks = dict()
         self.false_paths = set()
+        self.gateware_bin_file = gateware_bin_file
 
     def _build_batch(self, platform, sources, edifs, ips, build_name, build_dir):
         # script for step 1: place and route
@@ -148,7 +149,13 @@ class XilinxVivadoToolchain:
         tcl = []
         for bitstream_command in self.bitstream_commands:
             tcl.append(bitstream_command.format(build_name=build_name))
-        tcl.append("write_bitstream -force {}.bit ".format(build_name))
+        if self.gateware_bin_file:
+            # write_bitstream command only accepts a .bit extension for the output file.
+            # -no_binary_bitfile flag skips .bit binary bitstream file generation.
+            # -bin_file flag generates a .bin file instead.
+            tcl.append("write_bitstream -no_binary_bitfile -bin_file -force {}.bit ".format(build_name))
+        else:
+            tcl.append("write_bitstream -force {}.bit ".format(build_name))
         for additional_command in self.additional_commands:
             tcl.append(additional_command.format(build_name=build_name))
         tcl.append("quit")

@@ -476,9 +476,10 @@ class Platform(XilinxPlatform):
     default_clk_name = "clk156"
     default_clk_period = 6.4
 
-    def __init__(self, toolchain="vivado", programmer="xc3sprog"):
+    def __init__(self, toolchain="vivado", programmer="xc3sprog",
+                 gateware_bin_file=False):
         XilinxPlatform.__init__(self, "xc7k325t-ffg900-2", _io, _connectors,
-            toolchain=toolchain)
+            toolchain=toolchain, gateware_bin_file=gateware_bin_file)
         if toolchain == "ise":
             self.toolchain.bitgen_opt = "-g LCK_cycle:6 -g Binary:Yes -w -g ConfigRate:12 -g SPI_buswidth:4"
         elif toolchain == "vivado":

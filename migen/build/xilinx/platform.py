@@ -6,14 +6,17 @@ from migen.build.xilinx import common, vivado, ise, symbiflow
 
 
 class XilinxPlatform(GenericPlatform):
-    def __init__(self, *args, toolchain="ise", **kwargs):
+    def __init__(self, *args, toolchain="ise",
+                 gateware_bin_file=False, **kwargs):
         GenericPlatform.__init__(self, *args, **kwargs)
         self.edifs = set()
         self.ips = set()
+        if gateware_bin_file and toolchain != "vivado":
+            raise NotImplementedError("'gateware_bin_file' is only supported for Vivado toolchain")
         if toolchain == "ise":
             self.toolchain = ise.XilinxISEToolchain()
         elif toolchain == "vivado":
-            self.toolchain = vivado.XilinxVivadoToolchain()
+            self.toolchain = vivado.XilinxVivadoToolchain(gateware_bin_file=gateware_bin_file)
         elif toolchain == "symbiflow":
             self.toolchain = symbiflow.SymbiflowToolchain()
         else:

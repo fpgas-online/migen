@@ -385,7 +385,7 @@ _extensions = [
 class Platform(XilinxPlatform):
     userid = 0xffffffff
 
-    def __init__(self, hw_rev="v1.1"):
+    def __init__(self, hw_rev="v1.1", gateware_bin_file=False):
         if hw_rev == "v1.0":
             fpga = "xc7a100t-fgg484-3"
         elif hw_rev in ["v1.1", "v1.2"]:
@@ -393,7 +393,8 @@ class Platform(XilinxPlatform):
         else:
             raise ValueError("Unknown hardware revision", hw_rev)
         XilinxPlatform.__init__(
-            self, fpga, _ios, _connectors, toolchain="vivado")
+            self, fpga, _ios, _connectors, toolchain="vivado",
+            gateware_bin_file=gateware_bin_file)
         self.add_extension(_extensions)
 
         # https://support.xilinx.com/s/article/42036?language=en_US

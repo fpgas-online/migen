@@ -293,6 +293,6 @@ class Platform(XilinxPlatform):
     default_clk_name = "clk200"
     default_clk_period = 5  # 200 MHz
 
-    def __init__(self):
+    def __init__(self, gateware_bin_file=False):
         XilinxPlatform.__init__(self, "xc7z045-ffg900-2", _io, _connectors,
-            toolchain="vivado")
+            toolchain="vivado", gateware_bin_file=gateware_bin_file)

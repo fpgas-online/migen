@@ -303,6 +303,6 @@ _connectors_eem = [
 ]
 
 class Platform(XilinxPlatform):
-    def __init__(self):
+    def __init__(self, gateware_bin_file=False):
         XilinxPlatform.__init__(self, "xc7z030-ffg676-3", _io, _connectors_eem,
-            toolchain="vivado")
+            toolchain="vivado", gateware_bin_file=gateware_bin_file)

@@ -272,7 +272,8 @@ _extensions = [
 
 class Platform(XilinxPlatform):
     userid = 0xffffffff
-    def __init__(self, speed_grade="-2", with_uart=False):
+    def __init__(self, speed_grade="-2", with_uart=False,
+                 gateware_bin_file=False):
         global _ios
         if speed_grade == "-2":
             fpga = "xc7a100t-fgg484-2"
@@ -293,7 +294,8 @@ class Platform(XilinxPlatform):
             ]
         XilinxPlatform.__init__(
                 self, fpga, _ios, _connectors,
-                toolchain="vivado")
+                toolchain="vivado",
+                gateware_bin_file=gateware_bin_file)
         self.add_extension(_extensions)
         self.add_platform_command(
                 "set_property INTERNAL_VREF 0.750 [get_iobanks 35]")
