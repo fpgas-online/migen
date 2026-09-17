@@ -139,7 +139,8 @@ _connectors = [
 
 
 class Platform(XilinxPlatform):
-    def __init__(self):
+    def __init__(self, gateware_bin_file=False):
         XilinxPlatform.__init__(
-            self, "xc7z010-clg400-1", _io, _connectors, toolchain="vivado"
+            self, "xc7z010-clg400-1", _io, _connectors, toolchain="vivado",
+            gateware_bin_file=gateware_bin_file
         )
