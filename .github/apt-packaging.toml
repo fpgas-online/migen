@@ -1,0 +1,10 @@
+# What kind of packaging repository this is, and why it differs from the
+# defaults: mithro/apt-repo-action's docs/packaging.md ("The declaration").
+kind = "A"
+upstream = "https://git.m-labs.hk/M-Labs/migen"
+architectures = "all"
+suites = ["bookworm", "trixie", "forky", "sid"]
+
+[exceptions]
+PKG-SUITES = "fpgas.online uses it"
+PKG-SHARED = "the shared scripts/deb-version.py implements Set B only (compliance-plan.md, section 3); packaging/deb-version.py is the Set A form until it does"
