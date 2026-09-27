@@ -1,0 +1,15 @@
+# What kind of packaging repository this is, and why it differs from the
+# defaults: mithro/apt-repo-action's docs/packaging.md ("The declaration").
+#
+# The packaging branch has its own history; the upstream it packages lives
+# beside it on mirror branches (master = git.m-labs.hk's master, exactly),
+# and each build fetches it: the "patch series" form, with the upstream kept
+# in this repository instead of fetched from elsewhere.
+kind = "B"
+variant = "patch-series"
+architectures = "all"
+suites = ["bookworm", "trixie", "forky", "sid"]
+
+[exceptions]
+PKG-SUITES = "fpgas.online uses it"
+PKG-SHARED = "the shared scripts/deb-version.py has no patch-series form yet (compliance-plan.md, section 3.1); packaging/deb-version.py is that form until it does"

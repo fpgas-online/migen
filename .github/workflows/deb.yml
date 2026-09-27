@@ -1,0 +1,130 @@
+name: Debian packages
+
+# Builds python3-migen from the mirrored upstream branch (master, an exact
+# copy of git.m-labs.hk's) with this branch's debian/, for each suite, and
+# publishes one signed flat apt repository per suite to this repository's
+# GitHub Pages through mithro/apt-repo-action:
+#
+#   deb [signed-by=/etc/apt/keyrings/migen.gpg] https://fpgas.online/migen/<suite>/ ./
+#
+# Runs on a push to packaging, and when "Sync upstream" has moved master
+# (it starts this workflow, since its pushes can't). Pull requests build
+# everything and publish nothing. migen is pure Python (Architecture: all),
+# so each suite builds once; bookworm too, because fpgas.online's Pi NFS
+# root is still bookworm (.github/apt-packaging.toml).
+on:
+  push:
+    branches: [packaging]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deb-${{ github.ref }}
+  # A newer push to a pull request cancels the older build. On the default
+  # branch a running publish is never cancelled: the newest run waits for it,
+  # and replaces any older one still waiting.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  UPSTREAM_BRANCH: master
+
+jobs:
+  test:
+    # Upstream's own suite, against each suite's Python and colorama.
+    name: test (${{ matrix.suite }})
+    runs-on: ubuntu-24.04
+    container: debian:${{ matrix.suite }}
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [bookworm, trixie, forky, sid]
+    steps:
+      - name: Install Python
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends python3 python3-colorama
+      - name: Check out upstream
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ env.UPSTREAM_BRANCH }}
+      - name: Run upstream's tests
+        run: PYTHONPATH="$PWD" python3 -m unittest discover -s migen/test -t . -v
+
+  build-deb:
+    name: build-deb (${{ matrix.suite }} ${{ matrix.arch }})
+    needs: test
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [bookworm, trixie, forky, sid]
+        arch: [all]
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # the packaging half of the version comes from git describe
+
+      - name: Check out upstream
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ env.UPSTREAM_BRANCH }}
+          path: src
+          fetch-depth: 0 # the upstream half of the version needs its tags
+
+      - name: Add the packaging
+        env:
+          SUITE: ${{ matrix.suite }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          cp -a debian src/debian
+          python3 packaging/deb-version.py --source src --suite "$SUITE" ${PR:+--pr "$PR"} \
+            --write-changelog src/debian/changelog
+          cat src/debian/changelog
+
+      - name: Build
+        id: build
+        uses: mithro/apt-repo-action/build-deb@main
+        with:
+          suite: ${{ matrix.suite }}
+          arch: ${{ matrix.arch }}
+          source-dir: src
+          version-script: none # the Add the packaging step wrote the changelog
+
+      - name: Install test
+        env:
+          SUITE: ${{ matrix.suite }}
+          APT_SOURCES: ${{ steps.build.outputs.apt-sources }}
+        run: |
+          docker run --rm -v "$APT_SOURCES:/apt-sources:ro" -v "$PWD/built-debs:/debs:ro" \
+            -v "$PWD/packaging/install-test.sh:/install-test.sh:ro" \
+            "debian:$SUITE" sh -ec '
+              sh /apt-sources/install.sh
+              apt-get update
+              apt-get install -y /debs/*.deb
+              sh /install-test.sh'
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: debs-${{ matrix.suite }}-${{ matrix.arch }}
+          path: built-debs/
+          retention-days: 14
+
+  publish-apt:
+    if: github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch
+    needs: build-deb
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: mithro/apt-repo-action/.github/workflows/publish-apt.yml@main
+    with:
+      suites: "bookworm trixie forky sid"
+      architectures: "all"
+      description: "migen (git.m-labs.hk/M-Labs/migen), the Python HDL LiteX is written in"
+    secrets:
+      gpg-private-key: ${{ secrets.APT_GPG_PRIVATE_KEY }}
