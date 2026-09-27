@@ -1,0 +1,27 @@
+Source: migen
+Section: python
+Priority: optional
+Maintainer: Tim 'mithro' Ansell <me@mith.ro>
+Build-Depends: debhelper-compat (= 13),
+               dh-python,
+               pybuild-plugin-pyproject,
+               python3-all,
+               python3-setuptools,
+Standards-Version: 4.7.0
+Homepage: https://git.m-labs.hk/M-Labs/migen
+Vcs-Git: https://github.com/fpgas-online/migen.git -b packaging
+Vcs-Browser: https://github.com/fpgas-online/migen/tree/packaging
+Rules-Requires-Root: no
+
+Package: python3-migen
+Architecture: all
+Depends: ${python3:Depends},
+         ${misc:Depends},
+Description: Python toolbox for building complex digital hardware
+ Migen is a Python-based tool that automates further the VLSI design
+ process. It provides a hardware description language embedded in
+ Python (FHDL), a simulator, a library of common cores and build
+ back-ends for FPGA toolchains (Xilinx, Lattice, Altera and others).
+ .
+ It is the HDL that LiteX and its cores (LiteDRAM, LitePCIe, LiteEth,
+ ...) are written in.
