@@ -1,0 +1,37 @@
+name: Sync upstream
+
+# migen moved from GitHub (m-labs/migen, archived; kept here as github-master,
+# legacy and experimental) to git.m-labs.hk. Daily, and on demand, every
+# branch and tag of git.m-labs.hk is copied here exactly (packaging/sync-mirror.py).
+# When that moves master, the branch the package is built from, this starts
+# "Debian packages" on packaging, which builds and publishes it: a push made
+# with the workflow's own token doesn't start other workflows by itself.
+on:
+  schedule:
+    - cron: "0 6 * * *" # daily 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write # push the mirrored branches and tags
+  actions: write # start deb.yml
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Mirror git.m-labs.hk
+        id: mirror
+        run: python3 packaging/sync-mirror.py
+
+      - name: Build and publish
+        if: steps.mirror.outputs.build == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deb.yml --ref packaging --repo "$GITHUB_REPOSITORY"
