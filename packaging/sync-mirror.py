@@ -29,10 +29,10 @@ BUILD_BRANCH = "master"
 OURS = {"packaging", "github-master", "legacy", "experimental"}
 
 
-def run(*args: str, check: bool = True) -> subprocess.CompletedProcess:
+def run(*args: str, check: bool = True, quiet: bool = False) -> subprocess.CompletedProcess:
     print("+", " ".join(args), flush=True)
     r = subprocess.run(args, capture_output=True, text=True)
-    if r.stdout.strip():
+    if r.stdout.strip() and not quiet:
         print(r.stdout.rstrip())
     if r.stderr.strip():
         print(r.stderr.rstrip(), file=sys.stderr)
@@ -43,7 +43,7 @@ def run(*args: str, check: bool = True) -> subprocess.CompletedProcess:
 
 def refs(remote: str) -> dict[str, str]:
     """ref name -> object id, for branches and tags (peeled tag lines skipped)."""
-    out = run("git", "ls-remote", "--heads", "--tags", remote).stdout
+    out = run("git", "ls-remote", "--heads", "--tags", remote, quiet=True).stdout
     result = {}
     for line in out.splitlines():
         sha, name = line.split("\t")
