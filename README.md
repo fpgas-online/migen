@@ -46,11 +46,16 @@ Either a new upstream commit or a new packaging commit raises it.
 
 ## What the packaging changes
 
-Nothing in upstream's files. On bookworm only, `debian/rules` rewrites
-`pyproject.toml`'s PEP 639 licence string (`license = "BSD-2-Clause"`) to the
-older `{text = ...}` table while it builds, and puts it back: bookworm's
-setuptools 66 rejects the string form, newer ones deprecate the table. bookworm
-is built because fpgas.online's Pi NFS root is bookworm.
+Nothing in upstream's files. On bookworm only, `debian/pyproject-compat.py`
+adapts `pyproject.toml` to setuptools 66 while it builds, and puts upstream's
+file back afterwards:
+- the PEP 639 licence string (`license = "BSD-2-Clause"`) becomes the older
+  `{text = ...}` table, which 66 accepts (newer setuptools deprecate it);
+- the package is named (`migen`, `migen.*`), since 66's automatic discovery
+  counts the build's `debian/` directory as a second package.
+
+Newer suites build upstream's file unchanged. bookworm is built because
+fpgas.online's Pi NFS root is bookworm.
 
 Upstream's test suite runs in `deb.yml`'s `test` job rather than the package
 build, since it runs `examples/` from the source tree.

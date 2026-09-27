@@ -5,25 +5,14 @@ export PYBUILD_NAME = migen
 %:
 	dh $@ --with python3 --buildsystem=pybuild
 
-# pyproject.toml spells the licence as a PEP 639 SPDX string
-# (license = "BSD-2-Clause"), which setuptools only accepts from 77 on.
-# Bookworm has 66, whose schema check rejects it and fails the build, so
-# there (and only there) the field is rewritten to the older table form
-# for the build and put back afterwards. Newer setuptools gets upstream's
-# file untouched: they deprecate the table form.
-LICENSE_COMPAT = debian/.license-compat
-
+# Older setuptools (bookworm's 66) can't build upstream's pyproject.toml as it
+# is: see debian/pyproject-compat.py, which changes only what this suite needs
+# and puts upstream's file back afterwards.
 execute_before_dh_auto_configure:
-	if python3 -c 'import setuptools, sys; sys.exit(int(setuptools.__version__.split(".")[0]) >= 77)'; then \
-		sed -i 's/^license = "\(.*\)"$$/license = {text = "\1"}/' pyproject.toml; \
-		touch $(LICENSE_COMPAT); \
-	fi
+	python3 debian/pyproject-compat.py apply
 
 execute_after_dh_clean:
-	if [ -e $(LICENSE_COMPAT) ]; then \
-		sed -i 's/^license = {text = "\(.*\)"}$$/license = "\1"/' pyproject.toml; \
-		rm -f $(LICENSE_COMPAT); \
-	fi
+	python3 debian/pyproject-compat.py restore
 
 # Upstream's suite (migen/test) runs examples/ from the source tree, which
 # the pybuild build directory doesn't have. deb.yml's test job runs it in
