@@ -25,8 +25,14 @@ git.m-labs.hk instead.
 
 ## What we change, and why
 
-Nothing in upstream's files. The only difference is at build time on
-bookworm: upstream's `pyproject.toml` gives its licence as a PEP 639 string
+One commit changes an upstream file: `pyproject.toml` names its package
+(`[tool.setuptools.packages.find] include = ["migen", "migen.*"]`).
+Upstream relies on setuptools' automatic discovery, which refuses to build
+once this repository's `packaging/` sits beside `migen/` ("Multiple top-level
+packages discovered"). The wheel's contents are the same as upstream's (141
+files, compared).
+
+The other difference is at build time on bookworm only: upstream's `pyproject.toml` gives its licence as a PEP 639 string
 (`license = "BSD-2-Clause"`), which setuptools accepts only from version 77.
 Bookworm has 66, which rejects it, so `debian/rules` rewrites the field to the
 older `{text = ...}` table for the build and puts it back afterwards. Newer
@@ -62,7 +68,8 @@ Actions tab:
 
 Review the pull request and merge it **with a merge commit**; that publishes
 the new version. If the merge conflicts, or git.m-labs.hk rewrote its history,
-the workflow stops with an error saying so, and the merge is done by hand the
+the workflow stops with an error saying so (a conflict is most likely in
+`pyproject.toml`, the one upstream file changed here), and the merge is done by hand the
 same way: merge `upstream` into a branch off `packaging` and open a pull
 request.
 
