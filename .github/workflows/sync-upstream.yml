@@ -1,0 +1,106 @@
+name: Sync upstream
+
+# migen moved from GitHub (m-labs/migen, archived) to git.m-labs.hk. Weekly,
+# and on demand:
+#   1. fast-forward `upstream` to git.m-labs.hk's master, and mirror its tags;
+#   2. if `packaging` doesn't contain it yet, merge it into `packaging` on
+#      `sync/upstream` and open (or retitle) the pull request
+#      "Merge upstream <describe>" into `packaging` (docs/packaging.md in
+#      mithro/apt-repo-action, "Workflows").
+# New upstream versions are merged, never rebased: merging that pull request
+# (with a merge commit) is what builds and publishes them.
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write # push upstream, its tags and sync/upstream
+  pull-requests: write # open or retitle the merge pull request
+  actions: write # start deb.yml on sync/upstream (see below)
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_URL: https://git.m-labs.hk/M-Labs/migen.git
+  UPSTREAM_BRANCH: master
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+        with:
+          ref: packaging
+          fetch-depth: 0
+
+      - name: Fast-forward upstream
+        id: upstream
+        run: |
+          set -eu
+          git fetch --no-tags "$UPSTREAM_URL" "+refs/heads/$UPSTREAM_BRANCH:refs/remotes/src/$UPSTREAM_BRANCH"
+          git fetch "$UPSTREAM_URL" "+refs/tags/*:refs/tags/*"
+          new=$(git rev-parse "refs/remotes/src/$UPSTREAM_BRANCH")
+          old=$(git rev-parse refs/remotes/origin/upstream)
+          if ! git merge-base --is-ancestor "$old" "$new"; then
+            echo "::error::$UPSTREAM_URL $UPSTREAM_BRANCH ($new) no longer contains our upstream ($old): upstream rewrote its history. A person has to decide what upstream becomes; nothing was pushed."
+            exit 1
+          fi
+          # No '+': upstream only ever fast-forwards, and a tag upstream moved
+          # is refused rather than rewritten.
+          git push origin "$new:refs/heads/upstream"
+          git push origin --tags
+          echo "sha=$new" >> "$GITHUB_OUTPUT"
+          echo "describe=$(git describe --tags --match '[0-9]*' "$new")" >> "$GITHUB_OUTPUT"
+
+      - name: Open the merge pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEW: ${{ steps.upstream.outputs.sha }}
+          DESCRIBE: ${{ steps.upstream.outputs.describe }}
+        run: |
+          set -eu
+          if git merge-base --is-ancestor "$NEW" HEAD; then
+            echo "packaging already contains upstream $DESCRIBE"
+            exit 0
+          fi
+          # sync/upstream is this workflow's merge of upstream into packaging,
+          # so the pull request builds exactly what merging it publishes. If
+          # a person has committed to it (say, resolving a conflict), their
+          # work is left alone.
+          lease=""
+          if cur=$(git rev-parse --verify --quiet refs/remotes/origin/sync/upstream); then
+            if [ "$(git log -1 --format=%ce "$cur")" != "github-actions[bot]@users.noreply.github.com" ]; then
+              echo "::warning::sync/upstream has commits from someone else; left as it is. Finish merging upstream $DESCRIBE there."
+              exit 0
+            fi
+            lease="--force-with-lease=refs/heads/sync/upstream:$cur"
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if ! git merge --no-ff --no-edit -m "Merge upstream $DESCRIBE" "$NEW"; then
+            git merge --abort
+            echo "::error::Merging upstream $DESCRIBE into packaging conflicts. Merge it by hand: git merge $NEW, on a branch, then a pull request."
+            exit 1
+          fi
+          # The only branch this workflow ever rewrites, and only its own
+          # merge (the lease fails if it moved since the checkout).
+          git push $lease origin "HEAD:refs/heads/sync/upstream"
+
+          title="Merge upstream $DESCRIBE"
+          body="Merges git.m-labs.hk/M-Labs/migen master at $NEW ($DESCRIBE) into packaging. Merge with a merge commit (never squash or rebase): merging builds and publishes it."
+          pr=$(gh pr list --head sync/upstream --base packaging --state open --json number --jq '.[0].number')
+          if [ -n "$pr" ]; then
+            gh pr edit "$pr" --title "$title" --body "$body"
+          elif ! gh pr create --head sync/upstream --base packaging --title "$title" --body "$body"; then
+            echo "::error::Could not open the pull request (the organisation may not allow GitHub Actions to create pull requests). Open it by hand: https://github.com/$GITHUB_REPOSITORY/compare/packaging...sync/upstream"
+            exit 1
+          fi
+
+          # A pull request opened or pushed with GITHUB_TOKEN starts no
+          # pull_request workflows, so start the package build on the branch
+          # directly: its checks then show on the pull request's head commit.
+          gh workflow run deb.yml --ref sync/upstream
