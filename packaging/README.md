@@ -75,7 +75,7 @@ request.
 
 ## Install
 
-Key fingerprint: `FINGERPRINT-TO-BE-ADDED` (fill in when the signing key exists)
+Key fingerprint: `6A8D04C7B8C61FB19ADDF3768FEB36D965468C2C`
 
 ```sh
 sudo install -d -m0755 /etc/apt/keyrings
