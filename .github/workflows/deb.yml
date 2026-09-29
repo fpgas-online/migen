@@ -76,14 +76,7 @@ jobs:
           fetch-depth: 0 # the upstream half of the version needs its tags
 
       - name: Add the packaging
-        env:
-          SUITE: ${{ matrix.suite }}
-          PR: ${{ github.event.pull_request.number }}
-        run: |
-          cp -a debian src/debian
-          python3 packaging/deb-version.py --source src --suite "$SUITE" ${PR:+--pr "$PR"} \
-            --write-changelog src/debian/changelog
-          cat src/debian/changelog
+        run: cp -a debian src/debian
 
       - name: Build
         id: build
@@ -92,7 +85,11 @@ jobs:
           suite: ${{ matrix.suite }}
           arch: ${{ matrix.arch }}
           source-dir: src
-          version-script: none # the Add the packaging step wrote the changelog
+          # The shared scripts/deb-version.py, mirror form: upstream's describe
+          # (src, [mirror] tags) + fpgasonline + packaging's own (version-tree).
+          version-script: shared
+          version-tree: .
+          version-args: --owner-tag fpgasonline --upstream-dir .
 
       - name: Install test
         env:

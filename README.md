@@ -1,6 +1,8 @@
 # migen, packaged for Debian
 
-This repository keeps an exact copy of [migen](https://git.m-labs.hk/M-Labs/migen)
+A mirror repository in the sense of mithro/apt-repo-action's
+[docs/packaging.md](https://github.com/mithro/apt-repo-action/blob/main/docs/packaging.md)
+("Mirrors"). It keeps an exact copy of [migen](https://git.m-labs.hk/M-Labs/migen)
 from git.m-labs.hk and builds it as the Debian package `python3-migen`,
 published as a signed apt repository at <https://fpgas.online/migen/>.
 
@@ -18,10 +20,13 @@ packaged are pull requests against `packaging`.
 ## How it runs
 
 - **Sync upstream** (`.github/workflows/sync-upstream.yml`, daily at 06:00 UTC
-  and on demand) runs `packaging/sync-mirror.py`, which copies every branch
-  and tag of git.m-labs.hk here under the same name, forced, so each is
-  always identical to upstream's. Our own branches are never touched and
-  nothing is deleted. When `master` moved, it starts **Debian packages**.
+  and on demand) calls mithro/apt-repo-action's shared mirror sync
+  (`sync-mirror.yml`), driven by `.github/apt-packaging.toml`. It copies
+  every branch and tag of git.m-labs.hk here under the same name, forced, so
+  each is always identical to upstream's. Our own branches (`packaging` and
+  the `[mirror] ours` list) are never touched, and nothing is ever deleted:
+  a branch or tag upstream deletes stays here. When `master` moved, it starts
+  **Debian packages**.
 - **Debian packages** (`.github/workflows/deb.yml`, on every push to
   `packaging`, when Sync upstream starts it, and on pull requests without
   publishing) checks out `master`, adds `debian/` from `packaging`, runs
@@ -32,7 +37,8 @@ A new upstream commit is published the day it lands, with no review.
 
 ## Versions
 
-`packaging/deb-version.py`: upstream's version, then ours.
+apt-repo-action's shared `scripts/deb-version.py` (mirror form, run by
+`build-deb`): upstream's version, then ours.
 
 ```
 0.9.2.post126+fpgasonline.0.0.post5~deb13
